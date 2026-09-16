@@ -149,6 +149,24 @@
   @media (max-width:920px){
     .wrap{grid-template-columns:1fr;}
   }
+  @media (max-width:560px){
+    body{padding-bottom:40px;}
+    .hero{padding:28px 14px 34px;}
+    .hero-kicker{font-size:11px;padding:5px 11px;}
+    .hero-mal{font-size:14px;}
+    h1{font-size:clamp(24px,8vw,34px);}
+    p.sub{font-size:13.5px;}
+    .hero-pill{font-size:11px;padding:6px 11px;}
+    .content-wrap{padding:20px 10px 0;}
+    .panel{padding:14px;border-radius:12px;}
+    .cropper-outer{flex-direction:column;}
+    .cropper{width:100% !important; max-width:280px; margin:0 auto;}
+    .slot-controls{width:100%;}
+    input[type="file"]{width:100%;}
+    .actions{flex-direction:column;}
+    .actions button{width:100%;}
+    .preview-frame{max-width:100%;}
+  }
   .panel{
     background:var(--paper);
     border:1px solid var(--line);
@@ -464,10 +482,10 @@ function boxAspect(box){
 /* Build cropper DOM sizing to match target aspect ratio */
 function setupCropperSize(n){
   const box = BOXES[n].photo;
-  const aspect = boxAspect(box);
+  const w = box[2]-box[0], h = box[3]-box[1];
   const el = document.getElementById('cropper-' + n);
   el.style.width = PREVIEW_W + 'px';
-  el.style.height = Math.round(PREVIEW_W / aspect) + 'px';
+  el.style.aspectRatio = `${w} / ${h}`;
 }
 [1,2,3].forEach(setupCropperSize);
 
@@ -608,6 +626,28 @@ function setStatus(msg, isErr){
   el.textContent = msg;
   el.className = 'status' + (isErr ? ' err' : '');
 }
+
+/* ---------- Keep crops correct when the layout resizes (mobile/orientation) ---------- */
+let resizeTimer = null;
+window.addEventListener('resize', () => {
+  clearTimeout(resizeTimer);
+  resizeTimer = setTimeout(() => {
+    [1,2,3].forEach(n => {
+      const s = slots[n];
+      if(!s.img) return;
+      const el = document.getElementById('cropper-' + n);
+      const cw = el.clientWidth, ch = el.clientHeight;
+      const oldFit = s.fitScale;
+      const newFit = Math.max(cw / s.img.naturalWidth, ch / s.img.naturalHeight);
+      const k = newFit / oldFit;
+      s.offsetX *= k;
+      s.offsetY *= k;
+      s.fitScale = newFit;
+      clampOffsets(n);
+      renderSlotPreview(n);
+    });
+  }, 150);
+});
 
 /* ---------- Render final composite ---------- */
 const templateImg = new Image();
